@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Ilowawa
+Exec=org.kde.Ilowawa
+Comment=Macintosh
+Categories=System
+GenericName=Macintosh
+Icon=org.kde.Ilowawa
+Terminal=false
