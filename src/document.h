@@ -3,7 +3,6 @@
 #include <QQuickWindow>
 #include <KDirModel>
 #include <QItemSelectionModel>
-#include <KIO/KCoreUrlNavigator>
 
 #include "window.h"
 

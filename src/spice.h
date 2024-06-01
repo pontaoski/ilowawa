@@ -4,7 +4,7 @@
 
 #include <QQuickPaintedItem>
 
-class Spice : public QQuickPaintedItem
+class Spice : public QQuickItem
 {
 
     Q_OBJECT
@@ -20,7 +20,7 @@ public:
     void channelNew(SpiceSession* session, SpiceChannel* channel);
     void channelEvent(SpiceChannel* channel, SpiceChannelEvent event);
 
-    void paint(QPainter* painter) override;
+    QSGNode *updatePaintNode(QSGNode * oldNode, QQuickItem::UpdatePaintNodeData *data) override;
 
     Q_INVOKABLE void start();
 
@@ -33,7 +33,7 @@ public:
     bool running() const;
     Q_SIGNAL void runningChanged();
 
-    void primaryCreate(SpiceDisplayChannel* display, int format, int width, int height, int stride, int shmid, gpointer imgData);
+    void primaryCreate(SpiceDisplayChannel* display, SpiceSurfaceFmt format, int width, int height, int stride, int shmid, gpointer imgData);
     void primaryDestroy(SpiceDisplayChannel* display);
     void displayMark(SpiceDisplayChannel* display, int mark);
     void displayInvalidate(SpiceDisplayChannel* display, int x, int y, int width, int height);

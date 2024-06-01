@@ -1,12 +1,5 @@
 #include <QMenu>
 #include <QStandardPaths>
-#include <KFileItemActions>
-#include <KFileItemListProperties>
-#include <KStandardAction>
-#include <QItemSelectionModel>
-#include <QGuiApplication>
-#include <QClipboard>
-#include <KIO/PasteJob>
 
 #include "document.h"
 

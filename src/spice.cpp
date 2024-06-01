@@ -1,8 +1,10 @@
 #include <spice-client.h>
 
 #include <QImage>
+#include <QSGImageNode>
 #include <QPainter>
 
+#include "channel-display.h"
 #include "channel-inputs.h"
 #include "spice.h"
 
@@ -14,10 +16,12 @@ struct Spice::Private
     SpiceInputsChannel* inputs = nullptr;
 
     const uchar* imageData = nullptr;
+    int stride = -1;
+    QImage::Format format = QImage::Format_Invalid;
+
     int displayId = -1;
     int width = -1;
     int height = -1;
-    int stride = -1;
     bool mouseReset = false;
     int px = -1;
     int py = -1;
@@ -35,7 +39,7 @@ static void channelEventThunk(SpiceChannel *channel, SpiceChannelEvent event, gp
 
 static void primaryCreateThunk(
     SpiceDisplayChannel* channel,
-    int format,
+    SpiceSurfaceFmt format,
     int width,
     int height,
     int stride,
@@ -84,8 +88,9 @@ static void displayInvalidateThunk(
     reinterpret_cast<Spice*>(userdata)->displayInvalidate(channel, x, y, width, height);
 }
 
-Spice::Spice(QQuickItem* parent) : QQuickPaintedItem(parent), d(new Private)
+Spice::Spice(QQuickItem* parent) : QQuickItem(parent), d(new Private)
 {
+    setFlags(QQuickItem::ItemHasContents);
     d->session = spice_session_new();
     qWarning() << "made session" << d->session;
     g_signal_connect(d->session, "channel-new", G_CALLBACK(channelNewThunk), this);
@@ -176,10 +181,27 @@ void Spice::channelEvent(SpiceChannel* channel, SpiceChannelEvent event)
     }
 }
 
-void Spice::paint(QPainter* painter)
+QSGNode *Spice::updatePaintNode(QSGNode *oldNode, QQuickItem::UpdatePaintNodeData *data)
 {
-    auto img = QImage(d->imageData, d->width, d->height, d->stride, QImage::Format_RGB32);
-    painter->drawImage(0, 0, img);
+    Q_UNUSED(data)
+
+    auto node = static_cast<QSGImageNode*>(oldNode);
+    if (node == nullptr) {
+        node = window()->createImageNode();
+    }
+
+    if (node->texture() != nullptr) {
+        node->texture()->deleteLater();
+    }
+
+    QImage img(d->imageData, d->width, d->height, d->stride, d->format);
+    img.detach();
+    img.convertTo(QImage::Format_ARGB32);
+    auto texture = window()->createTextureFromImage(img, QQuickWindow::TextureIsOpaque);
+
+    node->setTexture(texture);
+    node->setRect(QRect(0, 0, d->width, d->height));
+    return node;
 }
 
 QString Spice::url() const
@@ -206,7 +228,7 @@ bool Spice::running() const
     return true;
 }
 
-void Spice::primaryCreate(SpiceDisplayChannel* display, int format, int width, int height, int stride, int shmid, gpointer imgData)
+void Spice::primaryCreate(SpiceDisplayChannel* display, SpiceSurfaceFmt format, int width, int height, int stride, int shmid, gpointer imgData)
 {
     Q_UNUSED(display)
     Q_UNUSED(shmid)
@@ -216,6 +238,16 @@ void Spice::primaryCreate(SpiceDisplayChannel* display, int format, int width, i
     d->width = width;
     d->height = height;
     d->stride = stride;
+    switch (format) {
+    case SPICE_SURFACE_FMT_1_A: d->format = QImage::Format_Mono; break;
+    case SPICE_SURFACE_FMT_8_A: d->format = QImage::Format_Alpha8; break;
+    case SPICE_SURFACE_FMT_16_555: d->format = QImage::Format_RGB555; break;
+    case SPICE_SURFACE_FMT_32_xRGB: d->format = QImage::Format_RGB32; break;
+    case SPICE_SURFACE_FMT_16_565: qFatal("unhandled format rgb 565");
+    case SPICE_SURFACE_FMT_32_ARGB: d->format = QImage::Format_ARGB32; break;
+    case SPICE_SURFACE_FMT_INVALID: qFatal("invalid format");
+    default: qFatal("unhandled format");
+    }
     setImplicitSize(width, height);
 }
 
@@ -231,7 +263,7 @@ void Spice::displayInvalidate(SpiceDisplayChannel* display, int x, int y, int wi
 {
     Q_UNUSED(display)
 
-    update(QRect(x, y, width, height));
+    update();
 }
 
 void Spice::displayMark(SpiceDisplayChannel* display, int mark)
@@ -296,6 +328,9 @@ void Spice::mousePressEvent(QMouseEvent *event)
 
     d->px = event->x();
     d->py = event->y();
+
+    setKeepMouseGrab(true);
+    grabMouse();
 }
 
 void Spice::mouseMoveEvent(QMouseEvent *event)
@@ -323,8 +358,6 @@ void Spice::mouseReleaseEvent(QMouseEvent *event)
 void Spice::hoverEnterEvent(QHoverEvent *event)
 {
     Q_UNUSED(event)
-
-    grabMouse();
 }
 
 void Spice::hoverMoveEvent(QHoverEvent *event)

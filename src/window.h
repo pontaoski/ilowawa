@@ -1,8 +1,7 @@
 #pragma once
 
 #include <QQuickWindow>
-#include <KDirModel>
-#include <KIO/KCoreUrlNavigator>
+#include <QObject>
 
 class SDocument;
 
@@ -33,3 +32,5 @@ public:
     Q_INVOKABLE void transferDocumentTo(SDocument* document, SWindow* window);
 
 };
+
+Q_MOC_INCLUDE("document.h")

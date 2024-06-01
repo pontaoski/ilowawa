@@ -1,4 +1,5 @@
 import qbs.Process
+import qbs.Probes
 
 QtApplication {
 	name: "org.kde.Ilowawa"
@@ -17,10 +18,10 @@ QtApplication {
         configure: {
             var proc = new Process()
             var exitCode = proc.exec("bash", [mu.src + "/extract_flags.sh",
-                "find_package(KF5 5.70 REQUIRED COMPONENTS I18n Config KIO)\n" +
+                "find_package(KF6 6.0 REQUIRED COMPONENTS I18n Config KIO)\n" +
                 "",
 
-                "KF5::ConfigCore KF5::I18n KF5::KIOCore KF5::KIOFileWidgets KF5::KIOWidgets",
+                "KF6::ConfigCore KF6::I18n KF6::KIOCore KF6::KIOGui KF6::KIOFileWidgets KF6::KIOWidgets",
             ])
             if (exitCode != 0) {
                 console.error(proc.readStdOut())
@@ -35,6 +36,8 @@ QtApplication {
     cpp.driverLinkerFlags: mu.linkerFlags
     cpp.includePaths: mu.includeDirs.concat([sourceDirectory])
     cpp.defines: ["QT_NO_KEYWORDS"]
+    cpp.cxxFlags: spice.cflags
+    cpp.linkerFlags: spice.libs
 
 	Group {
 		files: ["../data/**"]
@@ -46,6 +49,10 @@ QtApplication {
     Qt.qml.importName: "org.kde.ilowawa"
     Qt.qml.importVersion: "1.0"
 
-    Depends { name: "spice-client-glib-2.0" }
+	Probes.PkgConfigProbe {
+		id: spice
+		name: "spice-client-glib-2.0"	
+	}
+	qbsModuleProviders: ["qbspkgconfig", "Qt"]
 	Depends { name: "Qt"; submodules: ["core", "gui", "widgets", "quick", "quickcontrols2", "qml", "sql", "concurrent"] }
 }
